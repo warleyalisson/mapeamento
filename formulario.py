@@ -1,65 +1,67 @@
 import streamlit as st
 import datetime
 from geopy.geocoders import Nominatim
+import folium
+from streamlit_folium import st_folium
 
-def geocodificar_cep_endereco(cep, endereco=""):
+def geocodificar_cep(cep, complemento=""):
     geolocator = Nominatim(user_agent="araruta-mapeamento")
-    consulta = cep
-    if endereco.strip():
-        consulta += ", " + endereco
-    location = geolocator.geocode(consulta + ", Brasil")
+    busca = cep
+    if complemento.strip():
+        busca += ", " + complemento
+    location = geolocator.geocode(busca + ", Brasil")
     if location:
-        return location.latitude, location.longitude
+        return location.latitude, location.longitude, location.address
     else:
-        return None, None
-
-def inverter_geocodificacao(lat, lon):
-    geolocator = Nominatim(user_agent="araruta-mapeamento")
-    location = geolocator.reverse((lat, lon), exactly_one=True)
-    if location:
-        return location.address
-    else:
-        return ""
+        return None, None, None
 
 def formulario_envio(sheet):
-    st.subheader("📍 Adicionar novo ponto de cultivo")
+    st.subheader("📍 Cadastro de novo ponto de cultivo")
 
     registros = sheet.get_all_records()
     proximo_id = len(registros) + 1 if registros else 1
 
-    with st.form("formulario"):
-        cep = st.text_input("CEP (preferencial)")
-        endereco = st.text_input("Complemento de Endereço (opcional)")
-        col1, col2 = st.columns(2)
-        with col1:
-            latitude = st.number_input("Latitude (editável)", format="%.6f")
-        with col2:
-            longitude = st.number_input("Longitude (editável)", format="%.6f")
-        relato = st.text_area("Relato sobre o cultivo")
-        referencia = st.text_input("Referência (opcional)")
+    with st.form("formulario_busca"):
+        cep = st.text_input("CEP (obrigatório)")
+        complemento = st.text_input("Complemento de Endereço (opcional)")
 
-        auto_sync = st.checkbox("🔁 Preencher automaticamente coordenadas pelo CEP/Endereço")
+        buscar = st.form_submit_button("Buscar Localização")
 
-        if auto_sync:
-            if cep.strip() and (latitude == 0.0 and longitude == 0.0):
-                lat, lon = geocodificar_cep_endereco(cep, endereco)
-                if lat and lon:
-                    st.session_state["latitude_auto"] = lat
-                    st.session_state["longitude_auto"] = lon
-                    latitude = lat
-                    longitude = lon
-            elif latitude != 0.0 and longitude != 0.0 and not cep.strip():
-                endereco = inverter_geocodificacao(latitude, longitude)
+    latitude = None
+    longitude = None
+    endereco_completo = ""
 
-        enviar = st.form_submit_button("Enviar")
+    if buscar:
+        if cep.strip():
+            latitude, longitude, endereco_completo = geocodificar_cep(cep, complemento)
 
-        if enviar:
-            data = datetime.datetime.now().strftime("%Y-%m-%d")
-            nova_linha = [proximo_id, latitude, longitude, relato, referencia, data]
+            if latitude and longitude:
+                st.success(f"✅ Local encontrado: {endereco_completo}")
+                mapa = folium.Map(location=[latitude, longitude], zoom_start=16)
+                folium.Marker(
+                    location=[latitude, longitude],
+                    popup=endereco_completo,
+                    icon=folium.Icon(color="green", icon="leaf")
+                ).add_to(mapa)
+                st_folium(mapa, width=700, height=500)
+            else:
+                st.error("❌ Local não encontrado. Verifique o CEP e o complemento de endereço.")
+        else:
+            st.warning("⚠️ Por favor, preencha o CEP antes de buscar.")
 
-            try:
-                sheet.append_row(nova_linha)
-                st.success(f"✅ Ponto #{proximo_id} adicionado com sucesso!")
-            except Exception as e:
-                st.error("❌ Erro ao salvar os dados.")
-                st.exception(e)
+    if latitude and longitude:
+        with st.form("formulario_confirmar"):
+            relato = st.text_area("Relato sobre o cultivo")
+            referencia = st.text_input("Referência (opcional)")
+            enviar = st.form_submit_button("Salvar ponto")
+
+            if enviar:
+                data = datetime.datetime.now().strftime("%Y-%m-%d")
+                nova_linha = [proximo_id, latitude, longitude, relato, referencia, data]
+
+                try:
+                    sheet.append_row(nova_linha)
+                    st.success(f"✅ Ponto #{proximo_id} cadastrado com sucesso!")
+                except Exception as e:
+                    st.error("❌ Erro ao salvar os dados.")
+                    st.exception(e)
