@@ -1,8 +1,21 @@
 import folium
 from streamlit_folium import st_folium
+from geopy.geocoders import Nominatim
+import time
+
+def geocodificar_endereco(endereco):
+    geolocator = Nominatim(user_agent="araruta-mapeamento")
+    try:
+        location = geolocator.geocode(endereco + ", Brasil", timeout=10)
+        if location:
+            return location.latitude, location.longitude
+        else:
+            return None, None
+    except Exception as e:
+        print(f"[⚠️] Erro ao geocodificar endereço: {e}")
+        return None, None
 
 def exibir_mapa(df):
-    # Cria o mapa centralizado no Brasil
     mapa = folium.Map(location=[-14.2, -51.9], zoom_start=4)
 
     if df.empty:
@@ -10,36 +23,38 @@ def exibir_mapa(df):
     else:
         for index, row in df.iterrows():
             try:
-                # Corrige o formato da latitude/longitude
-                lat_str = str(row.get("latitude", "")).strip().replace(",", ".")
-                lon_str = str(row.get("longitude", "")).strip().replace(",", ".")
+                # Primeiro tenta usar o endereço completo
+                endereco = row.get("endereco_completo", "").strip()
 
-                lat = float(lat_str)
-                lon = float(lon_str)
+                # Se não tiver endereço, tenta usar o CEP
+                if not endereco:
+                    endereco = row.get("cep", "").strip()
 
-                # Validação extra: coordenadas dentro do intervalo esperado
-                if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
-                    print(f"[⚠️] Coordenada inválida ignorada: linha {index}")
-                    continue
+                if not endereco:
+                    continue  # Se não tiver nenhum dos dois, pula
 
-                # Construção do popup
-                popup_text = ""
-                if "relato" in row and row["relato"]:
-                    popup_text += f"<b>Relato:</b> {row['relato']}<br>"
-                if "referencia" in row and row["referencia"]:
-                    popup_text += f"<b>Referência:</b> {row['referencia']}<br>"
-                if "data_adicao" in row and row["data_adicao"]:
-                    popup_text += f"<b>Data:</b> {row['data_adicao']}"
+                # Geocodifica o endereço/cep
+                lat, lon = geocodificar_endereco(endereco)
+                time.sleep(1)  # respeitar limites do Nominatim
 
-                # Adiciona o marcador
-                folium.Marker(
-                    location=[lat, lon],
-                    popup=popup_text if popup_text else "Ponto sem descrição",
-                    icon=folium.Icon(color="green", icon="leaf")
-                ).add_to(mapa)
+                if lat and lon:
+                    # Monta o popup bonito
+                    popup_text = ""
+                    if "relato" in row and row["relato"]:
+                        popup_text += f"<b>Relato:</b> {row['relato']}<br>"
+                    if "referencia" in row and row["referencia"]:
+                        popup_text += f"<b>Referência:</b> {row['referencia']}<br>"
+                    if "data_adicao" in row and row["data_adicao"]:
+                        popup_text += f"<b>Data:</b> {row['data_adicao']}"
+
+                    folium.Marker(
+                        location=[lat, lon],
+                        popup=popup_text if popup_text else "Ponto sem descrição",
+                        icon=folium.Icon(color="green", icon="leaf")
+                    ).add_to(mapa)
 
             except Exception as e:
                 print(f"[⚠️] Erro ao processar linha {index}: {e}")
 
-    # Exibe o mapa final
     st_folium(mapa, width=900, height=600)
+
