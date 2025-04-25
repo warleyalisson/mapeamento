@@ -63,4 +63,3 @@ def formulario_envio(sheet):
             except Exception as e:
                 st.error("❌ Erro ao salvar os dados.")
                 st.exception(e)
-
