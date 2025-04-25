@@ -22,9 +22,9 @@ def formulario_envio(sheet):
     proximo_id = len(registros) + 1 if registros else 1
 
     with st.form("formulario_busca"):
-        cep = st.text_input("CEP (obrigatório)")
+        st.markdown("**Preencha o CEP para localizar automaticamente o ponto no mapa**")
+        cep = st.text_input("CEP *")
         complemento = st.text_input("Complemento de Endereço (opcional)")
-
         buscar = st.form_submit_button("Buscar Localização")
 
     latitude = None
@@ -47,21 +47,41 @@ def formulario_envio(sheet):
             else:
                 st.error("❌ Local não encontrado. Verifique o CEP e o complemento de endereço.")
         else:
-            st.warning("⚠️ Por favor, preencha o CEP antes de buscar.")
+            st.warning("⚠️ O campo 'CEP' é obrigatório. Preencha antes de buscar.")
 
     if latitude and longitude:
         with st.form("formulario_confirmar"):
-            relato = st.text_area("Relato sobre o cultivo")
+            st.markdown("**Confirme ou complete as informações para finalizar o cadastro:**")
+
+            st.text_input("Endereço encontrado *", value=endereco_completo, disabled=True)
+            st.text_input("Latitude *", value=str(latitude), disabled=True)
+            st.text_input("Longitude *", value=str(longitude), disabled=True)
+
+            relato = st.text_area("Relato sobre o cultivo *", placeholder="Descreva brevemente o cultivo")
             referencia = st.text_input("Referência (opcional)")
+
             enviar = st.form_submit_button("Salvar ponto")
 
             if enviar:
-                data = datetime.datetime.now().strftime("%Y-%m-%d")
-                nova_linha = [proximo_id, latitude, longitude, relato, referencia, data]
+                if not relato.strip():
+                    st.warning("⚠️ O campo 'Relato sobre o cultivo' é obrigatório.")
+                else:
+                    data = datetime.datetime.now().strftime("%Y-%m-%d")
+                    nova_linha = [
+                        proximo_id,
+                        cep.strip(),
+                        endereco_completo,
+                        complemento.strip(),
+                        latitude,
+                        longitude,
+                        relato.strip(),
+                        referencia.strip(),
+                        data
+                    ]
 
-                try:
-                    sheet.append_row(nova_linha)
-                    st.success(f"✅ Ponto #{proximo_id} cadastrado com sucesso!")
-                except Exception as e:
-                    st.error("❌ Erro ao salvar os dados.")
-                    st.exception(e)
+                    try:
+                        sheet.append_row(nova_linha)
+                        st.success(f"✅ Ponto #{proximo_id} cadastrado com sucesso!")
+                    except Exception as e:
+                        st.error("❌ Erro ao salvar os dados.")
+                        st.exception(e)
