@@ -5,7 +5,9 @@ from mapa import exibir_mapa
 from formulario import formulario_envio
 from info import exibir_informacoes
 
+# Nome do arquivo da planilha e da aba interna
 NOME_PLANILHA = "Mapa Araruta - PANC (colaborativo)"
+NOME_ABA = "DB_mapa"
 
 def main():
     st.set_page_config(layout="wide")
@@ -14,8 +16,10 @@ def main():
     aba = st.sidebar.radio("Navegação", ["🌎 Mapa", "➕ Contribuir", "📚 Informações"])
 
     try:
-        sheet = conectar_planilha("Mapa Araruta - PANC (colaborativo)")
-        registros = sheet.get_all_records()
+        # Conectar à aba DB_mapa da planilha
+        planilha = conectar_planilha(NOME_PLANILHA)
+        aba_dados = planilha.worksheet(NOME_ABA)
+        registros = aba_dados.get_all_records()
         df = pd.DataFrame(registros)
         df = df.dropna(subset=["latitude", "longitude"])
     except Exception as e:
@@ -28,7 +32,7 @@ def main():
         exibir_mapa(df)
 
     elif aba == "➕ Contribuir":
-        formulario_envio(sheet)
+        formulario_envio(aba_dados)
 
     elif aba == "📚 Informações":
         exibir_informacoes()
