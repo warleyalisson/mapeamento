@@ -3,3 +3,4 @@ streamlit-folium
 gspread
 oauth2client
 pandas
+geopy
