@@ -3,7 +3,7 @@ import json
 import streamlit as st
 from oauth2client.service_account import ServiceAccountCredentials
 
-def conectar_planilha(sheet_name="Araruta_Mapa"):
+def conectar_planilha(sheet_name="Mapa Araruta - PANC (colaborativo)"):
     escopos = [
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/spreadsheets",
@@ -12,5 +12,4 @@ def conectar_planilha(sheet_name="Araruta_Mapa"):
     creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
     credenciais = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, escopos)
     cliente = gspread.authorize(credenciais)
-    planilha = cliente.open(sheet_name)
-    return planilha.sheet1
+    return cliente.open(sheet_name)
