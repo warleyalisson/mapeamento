@@ -1,11 +1,11 @@
-import streamlit as st
+mport streamlit as st
 import pandas as pd
 from google_auth import conectar_planilha
 from mapa import exibir_mapa
 from formulario import formulario_envio
 from info import exibir_informacoes
 
-# Nome do arquivo da planilha e da aba interna
+# Nome exato da planilha e da aba conforme o Google Sheets
 NOME_PLANILHA = "Mapa Araruta - PANC (colaborativo)"
 NOME_ABA = "DB_mapa"
 
@@ -13,25 +13,27 @@ def main():
     st.set_page_config(layout="wide")
     st.title("🌿 Plataforma Colaborativa da Araruta como PANC")
 
+    # Menu lateral de navegação
     aba = st.sidebar.radio("Navegação", ["🌎 Mapa", "➕ Contribuir", "📚 Informações"])
 
     try:
-        # Conectar à aba DB_mapa da planilha
-        planilha = conectar_planilha(NOME_PLANILHA)
-        aba_dados = planilha.worksheet(NOME_ABA)
+        # Conectar à planilha e aba corretas
+        aba_dados = conectar_planilha(NOME_PLANILHA, NOME_ABA)
         registros = aba_dados.get_all_records()
         df = pd.DataFrame(registros)
         df = df.dropna(subset=["latitude", "longitude"])
     except Exception as e:
-        st.error("Erro ao carregar os dados da planilha.")
+        st.error("❌ Erro ao carregar os dados da planilha. Verifique se o nome da planilha e da aba estão corretos e se ela está compartilhada com a conta de serviço.")
         st.exception(e)
         return
 
+    # Módulos por aba
     if aba == "🌎 Mapa":
-        st.markdown("Visualize os pontos já cadastrados no mapa interativo:")
+        st.markdown("Visualize os pontos de cultivo da araruta mapeados colaborativamente:")
         exibir_mapa(df)
 
     elif aba == "➕ Contribuir":
+        st.markdown("Contribua com novos pontos de cultivo da araruta.")
         formulario_envio(aba_dados)
 
     elif aba == "📚 Informações":
