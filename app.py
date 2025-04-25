@@ -1,39 +1,32 @@
 import streamlit as st
 import pandas as pd
-from streamlit_folium import st_folium
-import folium
+from google_auth import conectar_planilha
+from mapa import exibir_mapa
+from formulario import formulario_envio
+from info import exibir_informacoes
 
-# URL do CSV exportado da planilha Google Sheets
-CSV_URL = "https://docs.google.com/spreadsheets/d/1anS4eByA0hTI4w_spDIDPS3P205czV2f74N63UvOioM/export?format=csv&gid=0"
-
-def carregar_dados():
-    try:
-        dados = pd.read_csv(CSV_URL)
-        return dados.dropna(subset=['latitude', 'longitude'])
-    except Exception as e:
-        st.error("Erro ao carregar os dados da planilha.")
-        st.exception(e)
-        return pd.DataFrame()
+# Nome da planilha compartilhada
+NOME_PLANILHA = "Araruta_Mapa"
 
 def main():
     st.set_page_config(layout="wide")
-    st.title("🌱 Mapa Colaborativo da Araruta como PANC")
-    st.markdown("Explore os locais de cultivo da **araruta (Maranta arundinacea)** mapeados colaborativamente.")
+    st.title("🌿 Plataforma Colaborativa da Araruta como PANC")
 
-    dados = carregar_dados()
+    aba = st.sidebar.radio("Navegação", ["🌎 Mapa", "➕ Contribuir", "📚 Informações"])
 
-    # Criação do mapa
-    mapa = folium.Map(location=[-14.2350, -51.9253], zoom_start=4)
+    sheet = conectar_planilha(NOME_PLANILHA)
+    registros = sheet.get_all_records()
+    df = pd.DataFrame(registros)
 
-    for _, row in dados.iterrows():
-        popup_texto = f"<b>Relato:</b> {row['relato']}<br><b>Referência:</b> {row['referencia']}"
-        folium.Marker(
-            location=[row['latitude'], row['longitude']],
-            popup=popup_texto,
-            icon=folium.Icon(color="green", icon="leaf")
-        ).add_to(mapa)
+    if aba == "🌎 Mapa":
+        st.markdown("Visualize os pontos já cadastrados no mapa interativo:")
+        exibir_mapa(df)
 
-    st_data = st_folium(mapa, width=900, height=600)
+    elif aba == "➕ Contribuir":
+        formulario_envio(sheet)
+
+    elif aba == "📚 Informações":
+        exibir_informacoes()
 
 if __name__ == "__main__":
     main()
