@@ -4,8 +4,11 @@ import datetime
 def formulario_envio(sheet):
     st.subheader("📍 Adicionar novo ponto de cultivo")
 
+    # Obter todos os registros existentes para determinar o próximo ID
+    registros = sheet.get_all_records()
+    proximo_id = len(registros) + 1 if registros else 1
+
     with st.form("formulario"):
-        id_valor = st.number_input("ID (número inteiro)", step=1, format="%d")
         latitude = st.number_input("Latitude", format="%.6f")
         longitude = st.number_input("Longitude", format="%.6f")
         relato = st.text_area("Relato sobre o cultivo")
@@ -14,11 +17,11 @@ def formulario_envio(sheet):
 
         if enviar:
             data = datetime.datetime.now().strftime("%Y-%m-%d")
-            nova_linha = [id_valor, latitude, longitude, relato, referencia, data]
+            nova_linha = [proximo_id, latitude, longitude, relato, referencia, data]
 
             try:
                 sheet.append_row(nova_linha)
-                st.success("✅ Ponto adicionado com sucesso!")
+                st.success(f"✅ Ponto #{proximo_id} adicionado com sucesso!")
             except Exception as e:
                 st.error("❌ Erro ao salvar os dados.")
                 st.exception(e)
