@@ -5,7 +5,7 @@ from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import st_folium
 
-def buscar_endereco_viacep(cep):
+def buscar_endereco_viacep(cep, numero=""):
     try:
         response = requests.get(f"https://viacep.com.br/ws/{cep}/json/")
         if response.status_code == 200:
@@ -15,7 +15,11 @@ def buscar_endereco_viacep(cep):
                 bairro = dados.get("bairro", "")
                 localidade = dados.get("localidade", "")
                 uf = dados.get("uf", "")
-                return f"{logradouro}, {bairro}, {localidade} - {uf}"
+                endereco = f"{logradouro}"
+                if numero.strip():
+                    endereco += f", {numero.strip()}"
+                endereco += f", {bairro}, {localidade} - {uf}"
+                return endereco
     except Exception as e:
         print(f"[ViaCEP] Erro: {e}")
     return None
@@ -46,8 +50,9 @@ def formulario_envio(sheet):
         st.session_state.cep = ""
 
     with st.form("formulario_busca"):
-        st.markdown("**Digite o CEP para localizar automaticamente o ponto:**")
+        st.markdown("**Digite o CEP e o número da casa para localizar o ponto:**")
         cep_input = st.text_input("CEP *", max_chars=20)
+        numero = st.text_input("Número da casa (opcional)")
         buscar = st.form_submit_button("Buscar Localização")
 
         if buscar:
@@ -55,7 +60,7 @@ def formulario_envio(sheet):
             if len(cep) != 8:
                 st.warning("⚠️ O CEP deve conter exatamente 8 números.")
             else:
-                endereco = buscar_endereco_viacep(cep)
+                endereco = buscar_endereco_viacep(cep, numero)
                 if endereco:
                     lat, lon, endereco_completo = geocodificar_endereco(endereco)
                     if lat and lon:
