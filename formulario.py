@@ -6,14 +6,12 @@ from streamlit_folium import st_folium
 
 def geocodificar_cep(cep):
     geolocator = Nominatim(user_agent="araruta-mapeamento")
-    # Faz a busca com Brasil forçado
-    busca = f"{cep}, Brasil"
-    location = geolocator.geocode(busca)
+    busca = f"{cep}"
+    location = geolocator.geocode(busca, country_codes="br", addressdetails=True)
     if location:
         return location.latitude, location.longitude, location.address
     else:
         return None, None, None
-
 def formulario_envio(sheet):
     st.subheader("📍 Cadastro de novo ponto de cultivo")
 
