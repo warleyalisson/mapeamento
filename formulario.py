@@ -1,21 +1,34 @@
 import streamlit as st
 import datetime
-import re
+import requests
 from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import st_folium
 
-def limpar_cep(cep):
-    """Remove tudo que não for número"""
-    return re.sub(r"[^0-9]", "", cep)
+def buscar_endereco_viacep(cep):
+    try:
+        response = requests.get(f"https://viacep.com.br/ws/{cep}/json/")
+        if response.status_code == 200:
+            dados = response.json()
+            if "erro" not in dados:
+                logradouro = dados.get("logradouro", "")
+                bairro = dados.get("bairro", "")
+                localidade = dados.get("localidade", "")
+                uf = dados.get("uf", "")
+                return f"{logradouro}, {bairro}, {localidade} - {uf}"
+    except Exception as e:
+        print(f"[ViaCEP] Erro: {e}")
+    return None
 
-def geocodificar_cep(cep):
+def geocodificar_endereco(endereco):
     geolocator = Nominatim(user_agent="araruta-mapeamento")
-    location = geolocator.geocode(cep, country_codes="br", addressdetails=True)
-    if location:
-        return location.latitude, location.longitude, location.address
-    else:
-        return None, None, None
+    try:
+        location = geolocator.geocode(endereco + ", Brasil", timeout=10, addressdetails=True)
+        if location:
+            return location.latitude, location.longitude, location.address
+    except Exception as e:
+        print(f"[Geopy] Erro ao geocodificar: {e}")
+    return None, None, None
 
 def formulario_envio(sheet):
     st.subheader("📍 Cadastro de novo ponto de cultivo")
@@ -29,6 +42,8 @@ def formulario_envio(sheet):
         st.session_state.longitude = None
     if "endereco_completo" not in st.session_state:
         st.session_state.endereco_completo = ""
+    if "cep" not in st.session_state:
+        st.session_state.cep = ""
 
     with st.form("formulario_busca"):
         st.markdown("**Digite o CEP para localizar automaticamente o ponto:**")
@@ -36,23 +51,23 @@ def formulario_envio(sheet):
         buscar = st.form_submit_button("Buscar Localização")
 
         if buscar:
-            cep = limpar_cep(cep_input)
-
-            if not cep:
-                st.warning("⚠️ Você precisa informar um CEP válido.")
-            elif len(cep) != 8:
+            cep = ''.join(filter(str.isdigit, cep_input))
+            if len(cep) != 8:
                 st.warning("⚠️ O CEP deve conter exatamente 8 números.")
             else:
-                lat, lon, endereco = geocodificar_cep(cep)
-
-                if lat and lon:
-                    st.session_state.latitude = lat
-                    st.session_state.longitude = lon
-                    st.session_state.endereco_completo = endereco
-                    st.session_state.cep = cep
-                    st.success(f"✅ Local encontrado: {endereco}")
+                endereco = buscar_endereco_viacep(cep)
+                if endereco:
+                    lat, lon, endereco_completo = geocodificar_endereco(endereco)
+                    if lat and lon:
+                        st.session_state.latitude = lat
+                        st.session_state.longitude = lon
+                        st.session_state.endereco_completo = endereco_completo
+                        st.session_state.cep = cep
+                        st.success(f"✅ Local encontrado: {endereco_completo}")
+                    else:
+                        st.error("❌ Local não encontrado com base no endereço.")
                 else:
-                    st.error("❌ Local não encontrado. Verifique o CEP.")
+                    st.error("❌ Não foi possível localizar o endereço via CEP. Verifique o número.")
 
     if st.session_state.latitude and st.session_state.longitude:
         st.markdown("### 🗺️ Localização no mapa:")
