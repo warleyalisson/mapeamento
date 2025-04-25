@@ -7,24 +7,21 @@ def exibir_mapa(df):
 
     for _, row in df.iterrows():
         try:
-            # Garante conversão correta de latitude e longitude
+            # Corrige vírgula e converte para número
             lat = float(str(row["latitude"]).replace(",", "."))
             lon = float(str(row["longitude"]).replace(",", "."))
 
-            # Ignora coordenadas inválidas
+            # Verifica se coordenadas são válidas
             if not (-90 <= lat <= 90 and -180 <= lon <= 180):
                 continue
 
-            # Monta o popup com as informações disponíveis
-            popup = ""
-            if "relato" in row and row["relato"]:
-                popup += f"<b>Relato:</b> {row['relato']}<br>"
+            # Prepara o popup bonito
+            popup = "<b>Relato:</b> " + row.get("relato", "Sem relato")
             if "referencia" in row and row["referencia"]:
-                popup += f"<b>Referência:</b> {row['referencia']}<br>"
+                popup += f"<br><b>Referência:</b> {row['referencia']}"
             if "data_adicao" in row and row["data_adicao"]:
-                popup += f"<b>Data:</b> {row['data_adicao']}"
+                popup += f"<br><b>Data:</b> {row['data_adicao']}"
 
-            # Adiciona o marcador ao mapa
             folium.Marker(
                 location=[lat, lon],
                 popup=popup,
@@ -32,6 +29,10 @@ def exibir_mapa(df):
             ).add_to(mapa)
 
         except Exception as e:
+            print(f"[⚠️] Erro ao processar ponto: {e}")
+
+    st_folium(mapa, width=900, height=600)
+
             print(f"[⚠️] Erro ao processar ponto: {e}")
 
     # Exibe o mapa interativo no Streamlit
