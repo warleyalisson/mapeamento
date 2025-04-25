@@ -6,7 +6,7 @@ from formulario import formulario_envio
 from info import exibir_informacoes
 
 # Nome exato da planilha e da aba conforme o Google Sheets
-NOME_PLANILHA = "Mapa Araruta - PANC (colaborativo)"
+NOME_PLANILHA_ID = "1anS4eByA0hTI4w_spDIDPS3P205czV2f74N63UvOioM"
 NOME_ABA = "DB_mapa"
 
 def main():
