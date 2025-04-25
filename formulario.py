@@ -16,8 +16,8 @@ def buscar_endereco_viacep(cep, numero=""):
                 localidade = dados.get("localidade", "")
                 uf = dados.get("uf", "")
                 endereco = f"{logradouro}"
-                if numero.strip():
-                    endereco += f", número {numero.strip()}"
+if numero.strip():
+    endereco += f", {numero.strip()}"
                 endereco += f", {bairro}, {localidade} - {uf}"
                 return endereco
     except Exception as e:
