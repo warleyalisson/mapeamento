@@ -14,7 +14,7 @@ def main():
     aba = st.sidebar.radio("Navegação", ["🌎 Mapa", "➕ Contribuir", "📚 Informações"])
 
     try:
-        sheet = conectar_planilha(NOME_PLANILHA)
+        sheet = conectar_planilha(data_adicao)
         registros = sheet.get_all_records()
         df = pd.DataFrame(registros)
         df = df.dropna(subset=["latitude", "longitude"])
