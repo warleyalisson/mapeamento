@@ -5,8 +5,7 @@ from mapa import exibir_mapa
 from formulario import formulario_envio
 from info import exibir_informacoes
 
-# Nome da planilha compartilhada
-NOME_PLANILHA = "Araruta_Mapa"
+NOME_PLANILHA = "Mapa Araruta - PANC (colaborativo)"
 
 def main():
     st.set_page_config(layout="wide")
@@ -14,9 +13,15 @@ def main():
 
     aba = st.sidebar.radio("Navegação", ["🌎 Mapa", "➕ Contribuir", "📚 Informações"])
 
-    sheet = conectar_planilha(NOME_PLANILHA)
-    registros = sheet.get_all_records()
-    df = pd.DataFrame(registros)
+    try:
+        sheet = conectar_planilha(NOME_PLANILHA)
+        registros = sheet.get_all_records()
+        df = pd.DataFrame(registros)
+        df = df.dropna(subset=["latitude", "longitude"])
+    except Exception as e:
+        st.error("Erro ao carregar os dados da planilha.")
+        st.exception(e)
+        return
 
     if aba == "🌎 Mapa":
         st.markdown("Visualize os pontos já cadastrados no mapa interativo:")
