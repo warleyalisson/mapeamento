@@ -3,7 +3,9 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 
-# Função para carregar dados da planilha com cache
+# --------------------------------------------
+# Função para carregar dados da planilha
+# --------------------------------------------
 def carregar_dados(sheet):
     if "dados_planilha" not in st.session_state:
         try:
@@ -18,7 +20,9 @@ def carregar_dados(sheet):
             st.session_state["dados_planilha"] = pd.DataFrame()
     return st.session_state["dados_planilha"]
 
-# Função para exibir o mapa com tratamento completo de coordenadas
+# --------------------------------------------
+# Função principal para exibir o mapa
+# --------------------------------------------
 def exibir_mapa(sheet):
     st.subheader("🗺️ Mapa de pontos cadastrados")
 
@@ -28,22 +32,18 @@ def exibir_mapa(sheet):
         st.warning("⚠️ Nenhum dado encontrado.")
         return
 
-    # Checar colunas essenciais
-    colunas_necessarias = ["latitude", "longitude", "endereco_completo", "relato", "telefone_contato", "email_contato"]
-    for coluna in colunas_necessarias:
-        if coluna not in df.columns:
-            st.warning(f"⚠️ Coluna '{coluna}' não encontrada.")
+    # Verificar colunas obrigatórias
+    colunas_necessarias = ["latitude", "longitude", "endereco_completo", "relato"]
+    for col in colunas_necessarias:
+        if col not in df.columns:
+            st.warning(f"⚠️ Coluna obrigatória ausente: {col}")
             return
 
-    # Correção e normalização de latitude/longitude
-    df["latitude"] = df["latitude"].astype(str).str.replace(",", ".", regex=False)
-    df["longitude"] = df["longitude"].astype(str).str.replace(",", ".", regex=False)
-
-    # Forçar conversão para float
+    # Conversão segura para float (já estão com ponto)
     df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
     df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
 
-    # Filtrar coordenadas válidas
+    # Filtrar apenas pontos válidos
     df_validos = df[
         df["latitude"].between(-90, 90) &
         df["longitude"].between(-180, 180)
@@ -61,24 +61,24 @@ def exibir_mapa(sheet):
         st_folium(mapa, width=800, height=600)
         return
 
-    # Mapa centralizado na média dos pontos
+    # Centralizar no centro dos pontos válidos
     lat_center = df_validos["latitude"].mean()
     lon_center = df_validos["longitude"].mean()
-    mapa = folium.Map(location=[lat_center, lon_center], zoom_start=5)
+    mapa = folium.Map(location=[lat_center, lon_center], zoom_start=6)
 
-    # Adiciona os marcadores válidos
+    # Criar marcadores
     for _, row in df_validos.iterrows():
-        popup_html = f"""
+        popup = f"""
         <b>📍 Endereço:</b> {row.get('endereco_completo', 'Não informado')}<br>
-        <b>🌱 Relato:</b> {row.get('relato', 'Sem relato')}<br>
+        <b>📝 Relato:</b> {row.get('relato', 'Sem relato')}<br>
         <b>📞 Telefone:</b> {row.get('telefone_contato', 'Não informado')}<br>
-        <b>✉️ E-mail:</b> {row.get('email_contato', 'Não informado')}
+        <b>✉️ Email:</b> {row.get('email_contato', 'Não informado')}
         """
         folium.Marker(
             location=[row["latitude"], row["longitude"]],
-            popup=folium.Popup(popup_html, max_width=350),
+            popup=folium.Popup(popup, max_width=350),
             icon=folium.Icon(color="green", icon="leaf")
         ).add_to(mapa)
 
+    # Exibir mapa no Streamlit
     st_folium(mapa, width=800, height=600)
-
