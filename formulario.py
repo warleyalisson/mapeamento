@@ -46,7 +46,11 @@ def formulario_envio(sheet):
     registros = sheet.get_all_records()
     proximo_id = len(registros) + 1 if registros else 1
 
-    # Sessão de preenchimento
+    # Inicializar session_state para localização
+    for var in ["latitude", "longitude", "endereco_formatado"]:
+        if var not in st.session_state:
+            st.session_state[var] = None
+
     with st.form("formulario_cadastro"):
         st.markdown("**Preencha os dados do cultivo e contato:**")
         relato = st.text_area("Relato sobre o cultivo *", placeholder="Descreva brevemente o cultivo")
@@ -60,12 +64,7 @@ def formulario_envio(sheet):
 
         buscar = st.form_submit_button("📍 Buscar Localização")
 
-    # Inicializar variáveis
-    endereco_formatado = None
-    latitude = None
-    longitude = None
-
-    # Processar localização se clicar em buscar
+    # Processar localização após clique
     if buscar:
         cep = ''.join(filter(str.isdigit, cep_input))
         if len(cep) != 8:
@@ -79,44 +78,54 @@ def formulario_envio(sheet):
         else:
             endereco = buscar_endereco_completo(cep, numero)
             if endereco:
-                latitude, longitude, endereco_formatado = geocodificar_googlemaps(endereco)
-                if latitude and longitude:
+                lat, lon, endereco_formatado = geocodificar_googlemaps(endereco)
+                if lat and lon:
+                    # Salvar no session_state
+                    st.session_state.latitude = lat
+                    st.session_state.longitude = lon
+                    st.session_state.endereco_formatado = endereco_formatado
+                    st.session_state.cep = cep
                     st.success(f"✅ Localização encontrada: {endereco_formatado}")
-
-                    # Exibe o mapa
-                    mapa = folium.Map(location=[latitude, longitude], zoom_start=17)
-                    folium.Marker(
-                        location=[latitude, longitude],
-                        popup=endereco_formatado,
-                        icon=folium.Icon(color="green", icon="leaf")
-                    ).add_to(mapa)
-                    st_folium(mapa, width=700, height=500)
-
-                    # Botão para confirmar e salvar
-                    if st.button("✅ Confirmar e Salvar"):
-                        data = datetime.datetime.now().strftime("%Y-%m-%d")
-                        nova_linha = [
-                            proximo_id,
-                            cep,
-                            endereco_formatado,
-                            "",  # Complemento
-                            latitude,
-                            longitude,
-                            relato.strip(),
-                            referencia.strip(),
-                            data,
-                            "",  # Endereço de contato removido
-                            telefone_contato.strip(),
-                            email_contato.strip()
-                        ]
-                        try:
-                            sheet.append_row(nova_linha)
-                            st.success(f"✅ Ponto #{proximo_id} cadastrado com sucesso!")
-                            st.experimental_rerun()
-                        except Exception as e:
-                            st.error("❌ Erro ao salvar os dados.")
-                            st.exception(e)
                 else:
-                    st.error("❌ Não foi possível localizar o endereço informado.")
+                    st.error("❌ Endereço não localizado.")
             else:
                 st.error("❌ Não foi possível consultar o CEP informado.")
+
+    # Se já tem localização salva, mostrar mapa e botão de salvar
+    if st.session_state.latitude and st.session_state.longitude:
+        st.markdown("### 🗺️ Visualização no mapa:")
+
+        mapa = folium.Map(location=[st.session_state.latitude, st.session_state.longitude], zoom_start=17)
+        folium.Marker(
+            location=[st.session_state.latitude, st.session_state.longitude],
+            popup=st.session_state.endereco_formatado,
+            icon=folium.Icon(color="green", icon="leaf")
+        ).add_to(mapa)
+        st_folium(mapa, width=700, height=500)
+
+        # Botão separado fora do formulário
+        if st.button("✅ Confirmar e Salvar"):
+            data = datetime.datetime.now().strftime("%Y-%m-%d")
+            nova_linha = [
+                proximo_id,
+                st.session_state.cep,
+                st.session_state.endereco_formatado,
+                "",  # Complemento
+                st.session_state.latitude,
+                st.session_state.longitude,
+                relato.strip(),
+                referencia.strip(),
+                data,
+                "",  # Endereço de contato removido
+                telefone_contato.strip(),
+                email_contato.strip()
+            ]
+            try:
+                sheet.append_row(nova_linha)
+                st.success(f"✅ Ponto #{proximo_id} cadastrado com sucesso!")
+                for var in ["latitude", "longitude", "endereco_formatado", "cep"]:
+                    st.session_state[var] = None
+                st.experimental_rerun()
+            except Exception as e:
+                st.error("❌ Erro ao salvar os dados.")
+                st.exception(e)
