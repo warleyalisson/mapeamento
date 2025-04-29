@@ -5,7 +5,13 @@ from geopy.geocoders import Nominatim
 from streamlit_folium import st_folium
 import folium
 
-# Função para buscar endereço no ViaCEP
+# (Opcional) Configurar LocationIQ API Key - deixar comentado se não for usar
+# LOCATIONIQ_API_KEY = "SUA_LOCATIONIQ_API_KEY"
+
+# (Opcional) Configurar Google Maps API Key - deixar comentado se não for usar
+# GOOGLE_API_KEY = "SUA_GOOGLE_MAPS_API_KEY"
+
+# Função para buscar endereço pelo ViaCEP
 def buscar_endereco_viacep(cep, numero=""):
     try:
         response = requests.get(f"https://viacep.com.br/ws/{cep}/json/")
@@ -16,35 +22,58 @@ def buscar_endereco_viacep(cep, numero=""):
                 bairro = dados.get("bairro", "")
                 cidade = dados.get("localidade", "")
                 uf = dados.get("uf", "")
-                # Montar o endereço completo
-                endereco = f"{logradouro}"
-                if numero.strip():
-                    endereco += f", {numero.strip()}"
-                endereco += f", {bairro}, {cidade} - {uf}"
+
+                # Construção aprimorada do endereço
+                endereco = f"{logradouro} número {numero.strip()}, {bairro}, {cidade}, {uf}, Brasil"
                 return endereco
     except Exception as e:
         print(f"[ViaCEP] Erro: {e}")
     return None
 
-# Função para geocodificar endereço
-def geocodificar_endereco(endereco):
+# Função de geocodificação usando Nominatim
+def geocodificar_nominatim(endereco):
     try:
         geolocator = Nominatim(user_agent="araruta-mapeamento")
-        location = geolocator.geocode(endereco + ", Brasil", timeout=10, addressdetails=True)
+        location = geolocator.geocode(endereco, timeout=10, addressdetails=True)
         if location:
             return location.latitude, location.longitude, location.address
     except Exception as e:
-        print(f"[Geopy] Erro ao geocodificar: {e}")
+        print(f"[Nominatim] Erro ao geocodificar: {e}")
     return None, None, None
 
-# Função principal do formulário
+# (Opcional) Função de geocodificação usando LocationIQ
+# def geocodificar_locationiq(endereco):
+#     try:
+#         url = f"https://us1.locationiq.com/v1/search.php?key={LOCATIONIQ_API_KEY}&q={endereco}&format=json"
+#         response = requests.get(url)
+#         if response.status_code == 200:
+#             data = response.json()[0]
+#             return float(data["lat"]), float(data["lon"]), data.get("display_name", "")
+#     except Exception as e:
+#         print(f"[LocationIQ] Erro: {e}")
+#     return None, None, None
+
+# (Opcional) Função de geocodificação usando Google Maps
+# def geocodificar_googlemaps(endereco):
+#     try:
+#         url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={GOOGLE_API_KEY}"
+#         response = requests.get(url)
+#         if response.status_code == 200:
+#             data = response.json()
+#             if data['results']:
+#                 loc = data['results'][0]['geometry']['location']
+#                 return loc['lat'], loc['lng'], data['results'][0]['formatted_address']
+#     except Exception as e:
+#         print(f"[Google Maps] Erro: {e}")
+#     return None, None, None
+
+# Função principal de envio de formulário
 def formulario_envio(sheet):
     st.subheader("📍 Cadastro de novo ponto de cultivo")
 
     registros = sheet.get_all_records()
     proximo_id = len(registros) + 1 if registros else 1
 
-    # Controle de sessão para armazenar dados
     if "latitude" not in st.session_state:
         st.session_state.latitude = None
     if "longitude" not in st.session_state:
@@ -54,7 +83,6 @@ def formulario_envio(sheet):
     if "cep" not in st.session_state:
         st.session_state.cep = ""
 
-    # Formulário para buscar localização
     with st.form("formulario_busca"):
         st.markdown("**Digite o CEP e o número da casa para localizar o ponto:**")
         cep_input = st.text_input("CEP *", max_chars=20)
@@ -68,7 +96,17 @@ def formulario_envio(sheet):
             else:
                 endereco = buscar_endereco_viacep(cep, numero)
                 if endereco:
-                    lat, lon, endereco_completo = geocodificar_endereco(endereco)
+                    # 1ª tentativa: Nominatim
+                    lat, lon, endereco_completo = geocodificar_nominatim(endereco)
+
+                    # (Comentado) 2ª tentativa: LocationIQ se Nominatim falhar
+                    # if not lat or not lon:
+                    #     lat, lon, endereco_completo = geocodificar_locationiq(endereco)
+
+                    # (Comentado) 3ª tentativa: Google Maps se LocationIQ falhar
+                    # if not lat or not lon:
+                    #     lat, lon, endereco_completo = geocodificar_googlemaps(endereco)
+
                     if lat and lon:
                         st.session_state.latitude = lat
                         st.session_state.longitude = lon
@@ -80,7 +118,6 @@ def formulario_envio(sheet):
                 else:
                     st.error("❌ Não foi possível localizar o endereço pelo CEP. Verifique se está correto.")
 
-    # Mostrar mapa e formulário final se localização for bem-sucedida
     if st.session_state.latitude and st.session_state.longitude:
         st.markdown("### 🗺️ Localização no mapa:")
 
@@ -92,7 +129,6 @@ def formulario_envio(sheet):
         ).add_to(mapa)
         st_folium(mapa, width=700, height=500)
 
-        # Formulário para completar informações
         with st.form("formulario_confirmar"):
             st.text_input("Endereço localizado *", value=st.session_state.endereco_completo, disabled=True)
             st.text_input("Latitude *", value=str(st.session_state.latitude), disabled=True)
