@@ -59,6 +59,7 @@ def formulario_envio(sheet):
     registros = sheet.get_all_records()
     proximo_id = len(registros) + 1 if registros else 1
 
+    # Inicializar as variáveis de sessão
     if "latitude" not in st.session_state:
         st.session_state.latitude = None
     if "longitude" not in st.session_state:
@@ -68,6 +69,7 @@ def formulario_envio(sheet):
     if "cep" not in st.session_state:
         st.session_state.cep = ""
 
+    # Formulário de localização
     with st.form("formulario_busca"):
         st.markdown("**Digite o CEP e o número da casa para localizar o ponto:**")
         cep_input = st.text_input("CEP *", max_chars=20)
@@ -94,12 +96,12 @@ def formulario_envio(sheet):
                         st.session_state.endereco_completo = endereco_completo
                         st.session_state.cep = cep
                         st.success(f"✅ Local encontrado: {endereco_completo}")
-                        st.experimental_rerun()  # Forçar reload para liberar o segundo formulário
                     else:
                         st.error("❌ Endereço não encontrado com base no número informado. Tente confirmar o CEP e o número.")
                 else:
                     st.error("❌ Não foi possível localizar o endereço pelo CEP. Verifique se está correto.")
 
+    # Agora, se já tiver localização, mostrar o mapa e formulário
     if st.session_state.latitude and st.session_state.longitude:
         st.markdown("### 🗺️ Localização no mapa:")
 
@@ -111,6 +113,7 @@ def formulario_envio(sheet):
         ).add_to(mapa)
         st_folium(mapa, width=700, height=500)
 
+        # Formulário de dados do cultivo
         with st.form("formulario_confirmar"):
             st.text_input("Endereço localizado *", value=st.session_state.endereco_completo, disabled=True)
             st.text_input("Latitude *", value=str(st.session_state.latitude), disabled=True)
