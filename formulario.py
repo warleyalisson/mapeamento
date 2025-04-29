@@ -86,12 +86,19 @@ def formulario_envio(sheet):
         st_folium(mapa, width=700, height=500)
 
         with st.form("formulario_confirmar"):
+            st.markdown("**Preencha os dados do cultivo e de contato:**")
+            
             st.text_input("Endereço localizado *", value=st.session_state.endereco_completo, disabled=True)
             st.text_input("Latitude *", value=str(st.session_state.latitude), disabled=True)
             st.text_input("Longitude *", value=str(st.session_state.longitude), disabled=True)
 
             relato = st.text_area("Relato sobre o cultivo *", placeholder="Descreva brevemente o cultivo")
             referencia = st.text_input("Referência (opcional)")
+
+            st.markdown("---")
+            endereco_contato = st.text_input("📍 Endereço de contato (opcional)")
+            telefone_contato = st.text_input("📞 Telefone/WhatsApp para contato (opcional)")
+            email_contato = st.text_input("✉️ E-mail de contato (opcional)")
 
             enviar = st.form_submit_button("Salvar ponto")
 
@@ -109,7 +116,10 @@ def formulario_envio(sheet):
                         st.session_state.longitude,
                         relato.strip(),
                         referencia.strip(),
-                        data
+                        data,
+                        endereco_contato.strip(),
+                        telefone_contato.strip(),
+                        email_contato.strip()
                     ]
 
                     try:
