@@ -3,38 +3,44 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 
-# Função para exibir o mapa com os pontos da planilha ou DataFrame
+# Função para exibir o mapa com os pontos
 def exibir_mapa(sheet):
     st.subheader("🗺️ Mapa de pontos cadastrados")
 
     try:
-        # Verifica se é uma planilha (gspread) ou um DataFrame já pronto
+        # Se for planilha (gspread) ou DataFrame
         if hasattr(sheet, "get_all_records"):
             df = pd.DataFrame(sheet.get_all_records())
         else:
-            df = sheet  # Já é um DataFrame
-
-        # Verificação mínima
-        if df.empty or "latitude" not in df.columns or "longitude" not in df.columns:
-            st.warning("⚠️ Nenhum dado com coordenadas encontrado.")
-            return
-
-        # Conversão de tipos
-        df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
-        df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
-        df = df.dropna(subset=["latitude", "longitude"])
+            df = sheet
 
         if df.empty:
-            st.warning("⚠️ Nenhuma coordenada válida encontrada.")
+            st.warning("⚠️ Nenhum dado encontrado.")
             return
 
-        # Mapa centrado na média dos pontos
-        lat_center = df["latitude"].mean()
-        lon_center = df["longitude"].mean()
-        mapa = folium.Map(location=[lat_center, lon_center], zoom_start=5)
+        # Confere se as colunas necessárias existem
+        if "latitude" not in df.columns or "longitude" not in df.columns:
+            st.warning("⚠️ Dados de latitude e longitude não encontrados.")
+            return
 
-        # Adiciona marcadores
-        for _, row in df.iterrows():
+        # Conversão de tipos para segurança
+        df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
+        df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+
+        df_validos = df.dropna(subset=["latitude", "longitude"])
+
+        # Se houver pontos válidos, centra no meio deles
+        if not df_validos.empty:
+            lat_center = df_validos["latitude"].mean()
+            lon_center = df_validos["longitude"].mean()
+            mapa = folium.Map(location=[lat_center, lon_center], zoom_start=5)
+        else:
+            # Se não houver pontos válidos, centra no Brasil
+            st.warning("⚠️ Nenhuma coordenada válida. Mapa centralizado no Brasil.")
+            mapa = folium.Map(location=[-14.2350, -51.9253], zoom_start=4)
+
+        # Adiciona os marcadores se houver dados
+        for _, row in df_validos.iterrows():
             popup_html = f"""
                 <b>Endereço:</b> {row.get('endereco_completo', 'Não informado')}<br>
                 <b>Relato:</b> {row.get('relato', 'Sem relato')}<br>
@@ -47,7 +53,7 @@ def exibir_mapa(sheet):
                 icon=folium.Icon(color="green", icon="leaf")
             ).add_to(mapa)
 
-        # Exibe o mapa
+        # Exibir no Streamlit
         st_folium(mapa, width=800, height=600)
 
     except Exception as e:
