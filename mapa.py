@@ -36,8 +36,8 @@ def exibir_mapa(sheet):
             return
 
     # Corrigir latitude e longitude (vírgula -> ponto)
-    df["latitude"] = df["latitude"].astype(str).str.replace(",", ".")
-    df["longitude"] = df["longitude"].astype(str).str.replace(",", ".")
+    df["latitude"] = df["latitude"].astype(str).str.replace(",", ".", regex=False)
+    df["longitude"] = df["longitude"].astype(str).str.replace(",", ".", regex=False)
 
     # Converter para float
     df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
