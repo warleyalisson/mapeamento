@@ -5,7 +5,7 @@ from geopy.geocoders import Nominatim
 from streamlit_folium import st_folium
 import folium
 
-# Chave da API do Google Maps (já configurada)
+# Chave da API do Google Maps
 GOOGLE_API_KEY = "AIzaSyAAgehm3dej7CHrt0Z8_I4ll0BhTg00fqo"
 
 # Função para buscar endereço no ViaCEP
@@ -19,15 +19,13 @@ def buscar_endereco_viacep(cep, numero=""):
                 bairro = dados.get("bairro", "")
                 cidade = dados.get("localidade", "")
                 uf = dados.get("uf", "")
-
-                # Construção aprimorada do endereço
                 endereco = f"{logradouro} número {numero.strip()}, {bairro}, {cidade}, {uf}, Brasil"
                 return endereco
     except Exception as e:
         print(f"[ViaCEP] Erro: {e}")
     return None
 
-# Função de geocodificação usando Nominatim
+# Geocodificação com Nominatim
 def geocodificar_nominatim(endereco):
     try:
         geolocator = Nominatim(user_agent="araruta-mapeamento")
@@ -38,7 +36,7 @@ def geocodificar_nominatim(endereco):
         print(f"[Nominatim] Erro: {e}")
     return None, None, None
 
-# Função de geocodificação usando Google Maps
+# Geocodificação com Google Maps
 def geocodificar_googlemaps(endereco):
     try:
         url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco.replace(' ', '+')}&key={GOOGLE_API_KEY}"
@@ -96,6 +94,7 @@ def formulario_envio(sheet):
                         st.session_state.endereco_completo = endereco_completo
                         st.session_state.cep = cep
                         st.success(f"✅ Local encontrado: {endereco_completo}")
+                        st.experimental_rerun()  # Forçar reload para liberar o segundo formulário
                     else:
                         st.error("❌ Endereço não encontrado com base no número informado. Tente confirmar o CEP e o número.")
                 else:
