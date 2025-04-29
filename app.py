@@ -1,81 +1,73 @@
 import streamlit as st
-import pandas as pd
 from google_auth import conectar_planilha
-from mapa import exibir_mapa
 from formulario import formulario_envio
-from info import exibir_informacoes
+from mapa import exibir_mapa
 
-# Configurações gerais do app (visual geral)
-st.set_page_config(
-    page_title="🌿 Mapeamento da Araruta",
-    page_icon="🌱",
-    layout="wide",  # Tela larga
-    initial_sidebar_state="expanded"
+# Nome da planilha e da aba
+NOME_PLANILHA_ID = "1anS4eByA0hTI4w_spDIDPS3P205czV2f74N63UvOioM"
+NOME_ABA = "DB_mapa"
+
+# Título e configuração da página
+st.set_page_config(page_title="Mapeamento da Araruta como PANC", layout="wide")
+st.title("🌱 Plataforma Colaborativa - Araruta como PANC")
+
+# Menu de navegação
+menu = st.sidebar.selectbox(
+    "Menu",
+    ["Início", "Cadastrar novo ponto", "Visualizar Mapa", "Informações"]
 )
 
-# Estilo customizado para harmonizar com o site oficial
-st.markdown("""
-<style>
-    .main {
-        background-color: #f8f9fa;
-    }
-    .stSidebar {
-        background-color: #e6f2e6;
-    }
-    h1, h2, h3 {
-        color: #006400;
-    }
-    button[kind="primary"] {
-        background-color: #228B22 !important;
-        color: white !important;
-        border-radius: 10px;
-        border: none;
-    }
-    .stTextInput>div>div>input {
-        border-radius: 10px;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Conectar à planilha
+try:
+    aba_dados = conectar_planilha(NOME_PLANILHA_ID, NOME_ABA)
+except Exception as e:
+    aba_dados = None
+    st.error("❌ Erro ao conectar à planilha. Verifique se está compartilhada corretamente.")
+    st.exception(e)
 
-# Definições da Planilha Google
-NOME_PLANILHA_ID = "1anS4eByA0hTI4w_spDIDPS3P205czV2f74N63UvOioM"
-NOME_ABA = "Página1"
+# Controle de telas
+if aba_dados:
+    if menu == "Início":
+        st.markdown("""
+        ### 👋 Bem-vindo à Plataforma de Mapeamento da Araruta 🌿
+        Esta plataforma colaborativa permite:
+        - 📍 Cadastrar locais de cultivo de araruta (PANC).
+        - 🗺️ Visualizar um mapa interativo com os pontos cadastrados.
+        - 🔍 Buscar informações para fomentar o cultivo da araruta.
 
-def main():
-    st.title("🌿 Plataforma Colaborativa: Mapeamento da Araruta como PANC")
+        Selecione uma opção no menu lateral para começar!
+        """)
+    elif menu == "Cadastrar novo ponto":
+        formulario_envio(aba_dados)
+    elif menu == "Visualizar Mapa":
+        exibir_mapa(aba_dados)
+    elif menu == "Informações":
+        st.header("📚 Informações sobre a Araruta e Contato")
 
-    aba = st.sidebar.radio("Navegue pelo sistema 🧭", [
-        "🌎 Ver Mapa",
-        "➕ Adicionar Novo Ponto",
-        "📚 Informações"
-    ])
+        st.markdown("""
+        ### 📍 Como encontrar a Araruta
+        - Verifique no mapa os locais já cadastrados.
+        - Utilize as informações de contato fornecidas em cada marcador.
 
-    try:
-        aba_dados = conectar_planilha(NOME_PLANILHA_ID, NOME_ABA)
-        registros = aba_dados.get_all_records()
-        df = pd.DataFrame(registros)
-        df = df.dropna(subset=["latitude", "longitude"])
-    except Exception as e:
-        st.error("❌ Erro ao carregar dados da planilha.")
-        st.exception(e)
-        return
+        ### 📬 Contato Geral
+        - **Telefone:** (31) 99999-9999
+        - **E-mail:** contato@ararutapanc.org
+        - **Instagram:** [@ararutapanc](https://www.instagram.com)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+        ### 🌱 Sobre a Araruta (Maranta arundinacea)
+        - A araruta é uma planta alimentícia não convencional (PANC).
+        - Rica em amido de alta digestibilidade.
+        - Adaptável a diferentes solos e climas.
 
-    if aba == "🌎 Ver Mapa":
-        with st.container():
-            st.header("🗺️ Mapa de Cultivos Cadastrados")
-            exibir_mapa(df)
+        ### 📖 Saiba mais
+        - [Guia Completo de Cultivo da Araruta (PDF)](https://exemplo.com/guia_araruta)
+        """, unsafe_allow_html=True)
+else:
+    st.warning("⚠️ Não foi possível carregar os dados. Sistema em modo offline.")
 
-    elif aba == "➕ Adicionar Novo Ponto":
-        with st.container():
-            st.header("📍 Cadastro de Novo Ponto")
-            formulario_envio(aba_dados)
-
-    elif aba == "📚 Informações":
-        with st.container():
-            st.header("📖 Informações sobre a Araruta e Contatos")
-            exibir_informacoes()
-
-if __name__ == "__main__":
-    main()
+# Rodapé
+st.markdown("---")
+st.markdown(
+    "<center><small>Desenvolvido por Warley Alisson | Plataforma de Pesquisa 2025</small></center>",
+    unsafe_allow_html=True
+)
