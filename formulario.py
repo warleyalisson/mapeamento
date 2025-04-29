@@ -5,13 +5,10 @@ from geopy.geocoders import Nominatim
 from streamlit_folium import st_folium
 import folium
 
-# (Opcional) Configurar LocationIQ API Key - deixar comentado se não for usar
-# LOCATIONIQ_API_KEY = "SUA_LOCATIONIQ_API_KEY"
+# Chave da API do Google Maps (já configurada)
+GOOGLE_API_KEY = "AIzaSyAAgehm3dej7CHrt0Z8_I4ll0BhTg00fqo"
 
-# (Opcional) Configurar Google Maps API Key - deixar comentado se não for usar
-# GOOGLE_API_KEY = "SUA_GOOGLE_MAPS_API_KEY"
-
-# Função para buscar endereço pelo ViaCEP
+# Função para buscar endereço no ViaCEP
 def buscar_endereco_viacep(cep, numero=""):
     try:
         response = requests.get(f"https://viacep.com.br/ws/{cep}/json/")
@@ -38,36 +35,26 @@ def geocodificar_nominatim(endereco):
         if location:
             return location.latitude, location.longitude, location.address
     except Exception as e:
-        print(f"[Nominatim] Erro ao geocodificar: {e}")
+        print(f"[Nominatim] Erro: {e}")
     return None, None, None
 
-# (Opcional) Função de geocodificação usando LocationIQ
-# def geocodificar_locationiq(endereco):
-#     try:
-#         url = f"https://us1.locationiq.com/v1/search.php?key={LOCATIONIQ_API_KEY}&q={endereco}&format=json"
-#         response = requests.get(url)
-#         if response.status_code == 200:
-#             data = response.json()[0]
-#             return float(data["lat"]), float(data["lon"]), data.get("display_name", "")
-#     except Exception as e:
-#         print(f"[LocationIQ] Erro: {e}")
-#     return None, None, None
+# Função de geocodificação usando Google Maps
+def geocodificar_googlemaps(endereco):
+    try:
+        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco.replace(' ', '+')}&key={GOOGLE_API_KEY}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            if data['results']:
+                loc = data['results'][0]['geometry']['location']
+                return loc['lat'], loc['lng'], data['results'][0]['formatted_address']
+            else:
+                print("[Google Maps] Nenhum resultado encontrado.")
+    except Exception as e:
+        print(f"[Google Maps] Erro: {e}")
+    return None, None, None
 
-# (Opcional) Função de geocodificação usando Google Maps
-# def geocodificar_googlemaps(endereco):
-#     try:
-#         url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={GOOGLE_API_KEY}"
-#         response = requests.get(url)
-#         if response.status_code == 200:
-#             data = response.json()
-#             if data['results']:
-#                 loc = data['results'][0]['geometry']['location']
-#                 return loc['lat'], loc['lng'], data['results'][0]['formatted_address']
-#     except Exception as e:
-#         print(f"[Google Maps] Erro: {e}")
-#     return None, None, None
-
-# Função principal de envio de formulário
+# Função principal do formulário
 def formulario_envio(sheet):
     st.subheader("📍 Cadastro de novo ponto de cultivo")
 
@@ -99,13 +86,9 @@ def formulario_envio(sheet):
                     # 1ª tentativa: Nominatim
                     lat, lon, endereco_completo = geocodificar_nominatim(endereco)
 
-                    # (Comentado) 2ª tentativa: LocationIQ se Nominatim falhar
-                    # if not lat or not lon:
-                    #     lat, lon, endereco_completo = geocodificar_locationiq(endereco)
-
-                    # (Comentado) 3ª tentativa: Google Maps se LocationIQ falhar
-                    # if not lat or not lon:
-                    #     lat, lon, endereco_completo = geocodificar_googlemaps(endereco)
+                    # 2ª tentativa: Google Maps se Nominatim falhar
+                    if not lat or not lon:
+                        lat, lon, endereco_completo = geocodificar_googlemaps(endereco)
 
                     if lat and lon:
                         st.session_state.latitude = lat
