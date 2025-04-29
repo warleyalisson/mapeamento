@@ -8,11 +8,11 @@ import folium
 # Chave da API do Google Maps
 GOOGLE_API_KEY = "AIzaSyAAgehm3dej7CHrt0Z8_I4ll0BhTg00fqo"
 
-# Regex de validação
+# Regex para validar telefone e email
 TELEFONE_REGEX = r"^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$"
 EMAIL_REGEX = r"^[\w\.-]+@[\w\.-]+\.\w{2,4}$"
 
-# Buscar endereço completo via ViaCEP
+# Função para buscar endereço completo no ViaCEP
 def buscar_endereco_completo(cep, numero=""):
     try:
         response = requests.get(f"https://viacep.com.br/ws/{cep}/json/")
@@ -28,7 +28,7 @@ def buscar_endereco_completo(cep, numero=""):
         print(f"[ViaCEP] Erro: {e}")
     return None
 
-# Geocodificação com Google
+# Função de geocodificação usando apenas Google Maps
 def geocodificar_googlemaps(endereco):
     try:
         url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco.replace(' ', '+')}&key={GOOGLE_API_KEY}"
@@ -37,12 +37,12 @@ def geocodificar_googlemaps(endereco):
             data = response.json()
             if data['results']:
                 loc = data['results'][0]['geometry']['location']
-                return loc['lat'], loc['lng'], data['results'][0]['formatted_address']
+                return float(loc['lat']), float(loc['lng']), data['results'][0]['formatted_address']
     except Exception as e:
         print(f"[Google Maps] Erro: {e}")
     return None, None, None
 
-# Função principal
+# Função principal do formulário
 def formulario_envio(sheet):
     st.subheader("📍 Cadastro de novo ponto de cultivo")
 
@@ -54,12 +54,11 @@ def formulario_envio(sheet):
         if var not in st.session_state:
             st.session_state[var] = None
 
-    # Formulário principal
     with st.form("formulario_cadastro"):
         st.markdown("**Preencha os dados do cultivo e contato:**")
         relato = st.text_area("Relato sobre o cultivo *", placeholder="Descreva brevemente o cultivo")
         referencia = st.text_input("Referência (opcional)")
-        telefone_contato = st.text_input("📞 Telefone/WhatsApp (DDD + número) (opcional)")
+        telefone_contato = st.text_input("📞 Telefone/WhatsApp (formato: (31) 98765-4321) (opcional)")
         email_contato = st.text_input("✉️ E-mail *")
 
         st.markdown("**Localização:**")
@@ -68,7 +67,6 @@ def formulario_envio(sheet):
 
         buscar = st.form_submit_button("📍 Buscar Localização")
 
-    # Processar localização
     if buscar:
         cep = ''.join(filter(str.isdigit, cep_input))
         erros = []
@@ -81,7 +79,7 @@ def formulario_envio(sheet):
             erros.append("⚠️ O campo 'Relato sobre o cultivo' é obrigatório.")
         if not email_contato.strip():
             erros.append("⚠️ O campo 'E-mail' é obrigatório.")
-        elif not re.match(EMAIL_REGEX, email_contato):
+        elif not re.match(EMAIL_REGEX, email_contato.strip()):
             erros.append("⚠️ E-mail inválido. Ex: exemplo@dominio.com")
         if telefone_contato.strip() and not re.match(TELEFONE_REGEX, telefone_contato.strip()):
             erros.append("⚠️ Telefone inválido. Ex: (31) 98765-4321")
@@ -93,18 +91,18 @@ def formulario_envio(sheet):
             endereco = buscar_endereco_completo(cep, numero)
             if endereco:
                 lat, lon, endereco_formatado = geocodificar_googlemaps(endereco)
-                if lat and lon:
-                    st.session_state.latitude = lat
-                    st.session_state.longitude = lon
+                if lat is not None and lon is not None:
+                    st.session_state.latitude = round(lat, 7)
+                    st.session_state.longitude = round(lon, 7)
                     st.session_state.endereco_formatado = endereco_formatado
                     st.session_state.cep = cep
                     st.success(f"✅ Localização encontrada: {endereco_formatado}")
                 else:
-                    st.error("❌ Endereço não localizado.")
+                    st.error("❌ Não foi possível localizar o endereço informado.")
             else:
                 st.error("❌ Não foi possível consultar o CEP informado.")
 
-    # Exibe o mapa se localização foi feita
+    # Se localização válida, mostra mapa e botão de confirmação
     if st.session_state.latitude and st.session_state.longitude:
         st.markdown("### 🗺️ Visualização no mapa:")
 
@@ -114,7 +112,7 @@ def formulario_envio(sheet):
             popup=st.session_state.endereco_formatado,
             icon=folium.Icon(color="green", icon="leaf")
         ).add_to(mapa)
-        st_folium(mapa, width=700, height=500)
+        st_folium(mapa, width=800, height=500)
 
         if st.button("✅ Confirmar e Salvar"):
             data = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -122,7 +120,7 @@ def formulario_envio(sheet):
                 proximo_id,
                 st.session_state.cep,
                 st.session_state.endereco_formatado,
-                "",  # Complemento
+                "",  # Complemento (não utilizado)
                 st.session_state.latitude,
                 st.session_state.longitude,
                 relato.strip(),
@@ -137,7 +135,7 @@ def formulario_envio(sheet):
                 st.success(f"✅ Ponto #{proximo_id} cadastrado com sucesso!")
                 for var in ["latitude", "longitude", "endereco_formatado", "cep"]:
                     st.session_state[var] = None
-                st.rerun()  # ✅ Corrigido!
+                st.rerun()
             except Exception as e:
                 st.error("❌ Erro ao salvar os dados.")
                 st.exception(e)
