@@ -5,11 +5,14 @@ import re
 from streamlit_folium import st_folium
 import folium
 
+# 🔑 Sua chave de API do Google Maps
 GOOGLE_API_KEY = "AIzaSyAAgehm3dej7CHrt0Z8_I4ll0BhTg00fqo"
 
+# Expressões regulares para validação
 EMAIL_REGEX = r"^[\w\.-]+@[\w\.-]+\.\w{2,4}$"
 TELEFONE_REGEX = r"^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$"
 
+# 🔎 Busca o endereço no ViaCEP
 def buscar_endereco_via_cep(cep):
     try:
         response = requests.get(f"https://viacep.com.br/ws/{cep}/json/")
@@ -21,6 +24,7 @@ def buscar_endereco_via_cep(cep):
         pass
     return None
 
+# 🌍 Faz a geocodificação usando a API do Google
 def geocodificar_googlemaps(endereco_completo):
     try:
         url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco_completo.replace(' ', '+')}&key={GOOGLE_API_KEY}"
@@ -35,16 +39,21 @@ def geocodificar_googlemaps(endereco_completo):
         pass
     return None, None, None
 
+# 🧾 Formulário principal
 def formulario_envio(sheet):
     st.subheader("📍 Cadastro de novo ponto de cultivo")
 
     registros = sheet.get_all_records()
     proximo_id = len(registros) + 1 if registros else 1
 
-    for var in ["latitude", "longitude", "endereco_formatado"]:
+    # Inicialização segura de estados e variáveis
+    telefone = ""
+    email = ""
+    for var in ["latitude", "longitude", "endereco_formatado", "cep"]:
         if var not in st.session_state:
             st.session_state[var] = None
 
+    # Formulário de entrada
     with st.form("formulario_cadastro"):
         st.markdown("### 📝 Informações do Cultivo")
         relato = st.text_area("Relato sobre o cultivo *", placeholder="Descreva brevemente o local e a experiência")
@@ -60,13 +69,14 @@ def formulario_envio(sheet):
 
         buscar = st.form_submit_button("🔎 Buscar localização")
 
+    # 🔎 Buscar localização via Google após validação
     if buscar:
         erros = []
-
-        cep = ''.join(filter(str.isdigit, cep_input.strip()))
         telefone = telefone_contato.strip()
         email = email_contato.strip()
+        cep = ''.join(filter(str.isdigit, cep_input.strip()))
 
+        # ⚠️ Validações
         if not relato.strip():
             erros.append("⚠️ O campo 'Relato' é obrigatório.")
         if not numero.strip():
@@ -103,6 +113,7 @@ def formulario_envio(sheet):
             else:
                 st.error("❌ CEP inválido ou não encontrado no ViaCEP.")
 
+    # ✅ Exibir mapa e botão de salvar após localização confirmada
     if st.session_state.latitude and st.session_state.longitude:
         st.markdown("### 🗺️ Confirme a localização no mapa")
 
@@ -126,7 +137,7 @@ def formulario_envio(sheet):
                 relato.strip(),
                 referencia.strip(),
                 data,
-                "",  # endereço de contato
+                "",  # endereço de contato (opcional)
                 telefone.strip(),
                 email.strip()
             ]
