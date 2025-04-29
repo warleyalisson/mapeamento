@@ -125,28 +125,38 @@ def formulario_envio(sheet):
         ).add_to(mapa)
         st_folium(mapa, width=800, height=500)
 
-        if st.button("✅ Confirmar e salvar"):
-            data = datetime.datetime.now().strftime("%Y-%m-%d")
-            nova_linha = [
-                proximo_id,
-                st.session_state.cep,
-                st.session_state.endereco_formatado,
-                "",  # Complemento
-                float(st.session_state.latitude),
-                float(st.session_state.longitude),
-                relato.strip(),
-                referencia.strip(),
-                data,
-                "",  # endereço de contato (opcional)
-                telefone.strip(),
-                email.strip()
-            ]
-            try:
-                sheet.append_row(nova_linha)
-                st.success("✅ Cadastro realizado com sucesso!")
-                for var in ["latitude", "longitude", "endereco_formatado", "cep"]:
-                    st.session_state[var] = None
-                st.rerun()
-            except Exception as e:
-                st.error("❌ Erro ao salvar os dados.")
-                st.exception(e)
+     if st.button("✅ Confirmar e salvar"):
+    data = datetime.datetime.now().strftime("%Y-%m-%d")
+    nova_linha = [
+        proximo_id,
+        st.session_state.cep,
+        st.session_state.endereco_formatado,
+        "",  # Complemento
+        float(st.session_state.latitude),
+        float(st.session_state.longitude),
+        relato.strip(),
+        referencia.strip(),
+        data,
+        "",  # endereço de contato (opcional)
+        telefone.strip(),
+        email.strip()
+    ]
+    try:
+        sheet.append_row(nova_linha)
+        st.success("✅ Cadastro realizado com sucesso!")
+
+        # 🔄 Limpar todos os campos
+        for var in [
+            "latitude", "longitude", "endereco_formatado", "cep",
+            "relato", "referencia", "telefone_contato", "email_contato",
+            "cep_input", "numero"
+        ]:
+            if var in st.session_state:
+                del st.session_state[var]
+
+        # 🔄 Recarregar a página
+        st.rerun()
+        
+    except Exception as e:
+        st.error("❌ Erro ao salvar os dados.")
+        st.exception(e)
