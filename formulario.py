@@ -5,6 +5,7 @@ from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import st_folium
 
+# Função para buscar o endereço no ViaCEP
 def buscar_endereco_viacep(cep, numero=""):
     try:
         response = requests.get(f"https://viacep.com.br/ws/{cep}/json/")
@@ -24,6 +25,7 @@ def buscar_endereco_viacep(cep, numero=""):
         print(f"[ViaCEP] Erro: {e}")
     return None
 
+# Função para geocodificar o endereço e obter lat/long
 def geocodificar_endereco(endereco):
     geolocator = Nominatim(user_agent="araruta-mapeamento")
     try:
@@ -34,11 +36,14 @@ def geocodificar_endereco(endereco):
         print(f"[Geopy] Erro ao geocodificar: {e}")
     return None, None, None
 
+# Função principal do formulário
 def formulario_envio(sheet):
     st.subheader("📍 Cadastro de novo ponto de cultivo")
+
     registros = sheet.get_all_records()
     proximo_id = len(registros) + 1 if registros else 1
 
+    # Controle de sessão para armazenar dados temporariamente
     if "latitude" not in st.session_state:
         st.session_state.latitude = None
     if "longitude" not in st.session_state:
@@ -48,6 +53,7 @@ def formulario_envio(sheet):
     if "cep" not in st.session_state:
         st.session_state.cep = ""
 
+    # Formulário para buscar CEP
     with st.form("formulario_busca"):
         st.markdown("**Digite o CEP e o número da casa para localizar o ponto:**")
         cep_input = st.text_input("CEP *", max_chars=20)
@@ -73,8 +79,10 @@ def formulario_envio(sheet):
                 else:
                     st.error("❌ Não foi possível localizar o endereço via CEP. Verifique o número.")
 
+    # Exibe o mapa se localizou o ponto
     if st.session_state.latitude and st.session_state.longitude:
         st.markdown("### 🗺️ Localização no mapa:")
+
         mapa = folium.Map(location=[st.session_state.latitude, st.session_state.longitude], zoom_start=16)
         folium.Marker(
             location=[st.session_state.latitude, st.session_state.longitude],
@@ -83,8 +91,9 @@ def formulario_envio(sheet):
         ).add_to(mapa)
         st_folium(mapa, width=700, height=500)
 
+        # Formulário final de preenchimento
         with st.form("formulario_confirmar"):
-            st.markdown("**Preencha os dados do cultivo e de contato:**")
+            st.markdown("**Preencha os dados do cultivo e informações de contato:**")
             st.text_input("Endereço localizado *", value=st.session_state.endereco_completo, disabled=True)
             st.text_input("Latitude *", value=str(st.session_state.latitude), disabled=True)
             st.text_input("Longitude *", value=str(st.session_state.longitude), disabled=True)
