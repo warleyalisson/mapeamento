@@ -1,60 +1,53 @@
+import streamlit as st
+import pandas as pd
 import folium
 from streamlit_folium import st_folium
-from geopy.geocoders import Nominatim
-import time
 
-def geocodificar_endereco(endereco):
-    geolocator = Nominatim(user_agent="araruta-mapeamento")
+# Função para exibir o mapa com os pontos da planilha
+def exibir_mapa(sheet):
+    st.subheader("🗺️ Mapa de pontos cadastrados")
+
     try:
-        location = geolocator.geocode(endereco + ", Brasil", timeout=10)
-        if location:
-            return location.latitude, location.longitude
-        else:
-            return None, None
+        dados = sheet.get_all_records()
+        df = pd.DataFrame(dados)
+
+        # Verificação mínima
+        if df.empty or "latitude" not in df.columns or "longitude" not in df.columns:
+            st.warning("⚠️ Nenhum dado com coordenadas encontrado.")
+            return
+
+        # Conversão de tipos
+        df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
+        df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+
+        df = df.dropna(subset=["latitude", "longitude"])
+
+        if df.empty:
+            st.warning("⚠️ Nenhuma coordenada válida encontrada.")
+            return
+
+        # Mapa centrado no primeiro ponto válido
+        lat_center = df["latitude"].mean()
+        lon_center = df["longitude"].mean()
+        mapa = folium.Map(location=[lat_center, lon_center], zoom_start=5)
+
+        # Adiciona os pontos no mapa
+        for _, row in df.iterrows():
+            popup_html = f"""
+                <b>Endereço:</b> {row.get('endereco_completo', 'Não informado')}<br>
+                <b>Relato:</b> {row.get('relato', 'Sem relato')}<br>
+                <b>Telefone:</b> {row.get('telefone_contato', 'Não informado')}<br>
+                <b>E-mail:</b> {row.get('email_contato', 'Não informado')}
+            """
+            folium.Marker(
+                location=[row["latitude"], row["longitude"]],
+                popup=folium.Popup(popup_html, max_width=300),
+                icon=folium.Icon(color="green", icon="leaf")
+            ).add_to(mapa)
+
+        # Exibir no Streamlit
+        st_folium(mapa, width=800, height=600)
+
     except Exception as e:
-        print(f"[⚠️] Erro ao geocodificar endereço: {e}")
-        return None, None
-
-def exibir_mapa(df):
-    mapa = folium.Map(location=[-14.2, -51.9], zoom_start=4)
-
-    if df.empty:
-        st.warning("⚠️ Nenhum ponto cadastrado ainda.")
-    else:
-        for index, row in df.iterrows():
-            try:
-                # Primeiro tenta usar o endereço completo
-                endereco = row.get("endereco_completo", "").strip()
-
-                # Se não tiver endereço, tenta usar o CEP
-                if not endereco:
-                    endereco = row.get("cep", "").strip()
-
-                if not endereco:
-                    continue  # Se não tiver nenhum dos dois, pula
-
-                # Geocodifica o endereço/cep
-                lat, lon = geocodificar_endereco(endereco)
-                time.sleep(1)  # respeitar limites do Nominatim
-
-                if lat and lon:
-                    # Monta o popup bonito
-                    popup_text = ""
-                    if "relato" in row and row["relato"]:
-                        popup_text += f"<b>Relato:</b> {row['relato']}<br>"
-                    if "referencia" in row and row["referencia"]:
-                        popup_text += f"<b>Referência:</b> {row['referencia']}<br>"
-                    if "data_adicao" in row and row["data_adicao"]:
-                        popup_text += f"<b>Data:</b> {row['data_adicao']}"
-
-                    folium.Marker(
-                        location=[lat, lon],
-                        popup=popup_text if popup_text else "Ponto sem descrição",
-                        icon=folium.Icon(color="green", icon="leaf")
-                    ).add_to(mapa)
-
-            except Exception as e:
-                print(f"[⚠️] Erro ao processar linha {index}: {e}")
-
-    st_folium(mapa, width=900, height=600)
-
+        st.error("❌ Erro ao carregar os dados da planilha.")
+        st.exception(e)
