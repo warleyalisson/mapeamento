@@ -36,7 +36,6 @@ def geocodificar_endereco(endereco):
 
 def formulario_envio(sheet):
     st.subheader("📍 Cadastro de novo ponto de cultivo")
-
     registros = sheet.get_all_records()
     proximo_id = len(registros) + 1 if registros else 1
 
@@ -76,7 +75,6 @@ def formulario_envio(sheet):
 
     if st.session_state.latitude and st.session_state.longitude:
         st.markdown("### 🗺️ Localização no mapa:")
-
         mapa = folium.Map(location=[st.session_state.latitude, st.session_state.longitude], zoom_start=16)
         folium.Marker(
             location=[st.session_state.latitude, st.session_state.longitude],
@@ -87,7 +85,6 @@ def formulario_envio(sheet):
 
         with st.form("formulario_confirmar"):
             st.markdown("**Preencha os dados do cultivo e de contato:**")
-            
             st.text_input("Endereço localizado *", value=st.session_state.endereco_completo, disabled=True)
             st.text_input("Latitude *", value=str(st.session_state.latitude), disabled=True)
             st.text_input("Longitude *", value=str(st.session_state.longitude), disabled=True)
@@ -98,7 +95,7 @@ def formulario_envio(sheet):
             st.markdown("---")
             endereco_contato = st.text_input("📍 Endereço de contato (opcional)")
             telefone_contato = st.text_input("📞 Telefone/WhatsApp para contato (opcional)")
-            email_contato = st.text_input("✉️ E-mail de contato (opcional)")
+            email_contato = st.text_input("✉️ E-mail para contato (opcional)")
 
             enviar = st.form_submit_button("Salvar ponto")
 
@@ -121,7 +118,6 @@ def formulario_envio(sheet):
                         telefone_contato.strip(),
                         email_contato.strip()
                     ]
-
                     try:
                         sheet.append_row(nova_linha)
                         st.success(f"✅ Ponto #{proximo_id} cadastrado com sucesso!")
