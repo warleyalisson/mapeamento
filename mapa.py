@@ -18,28 +18,31 @@ def exibir_mapa(sheet):
             st.warning("⚠️ Nenhum dado encontrado.")
             return
 
-        # Confere se as colunas necessárias existem
-        if "latitude" not in df.columns or "longitude" not in df.columns:
-            st.warning("⚠️ Dados de latitude e longitude não encontrados.")
-            return
+        # Confirma se colunas essenciais existem
+        colunas_necessarias = ["latitude", "longitude", "endereco_completo", "relato", "telefone_contato", "email_contato"]
+        for coluna in colunas_necessarias:
+            if coluna not in df.columns:
+                st.warning(f"⚠️ Coluna '{coluna}' não encontrada nos dados.")
+                return
 
-        # Conversão de tipos para segurança
+        # Conversão segura de latitude e longitude
         df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
         df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
-
         df_validos = df.dropna(subset=["latitude", "longitude"])
 
-        # Se houver pontos válidos, centra no meio deles
-        if not df_validos.empty:
-            lat_center = df_validos["latitude"].mean()
-            lon_center = df_validos["longitude"].mean()
-            mapa = folium.Map(location=[lat_center, lon_center], zoom_start=5)
-        else:
-            # Se não houver pontos válidos, centra no Brasil
-            st.warning("⚠️ Nenhuma coordenada válida. Mapa centralizado no Brasil.")
-            mapa = folium.Map(location=[-14.2350, -51.9253], zoom_start=4)
+        # Verificação se há pontos válidos
+        if df_validos.empty:
+            st.warning("⚠️ Nenhuma coordenada válida encontrada.")
+            mapa = folium.Map(location=[-14.2350, -51.9253], zoom_start=4)  # Brasil
+            st_folium(mapa, width=800, height=600)
+            return
 
-        # Adiciona os marcadores se houver dados
+        # Centro do mapa
+        lat_center = df_validos["latitude"].mean()
+        lon_center = df_validos["longitude"].mean()
+        mapa = folium.Map(location=[lat_center, lon_center], zoom_start=5)
+
+        # Adicionar marcadores
         for _, row in df_validos.iterrows():
             popup_html = f"""
                 <b>Endereço:</b> {row.get('endereco_completo', 'Não informado')}<br>
