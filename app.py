@@ -9,33 +9,28 @@ from info import exibir_informacoes
 st.set_page_config(
     page_title="🌿 Mapeamento da Araruta",
     page_icon="🌱",
-    layout="wide",  # Tela larga, igual site moderno
+    layout="wide",  # Tela larga
     initial_sidebar_state="expanded"
 )
 
 # Estilo customizado para harmonizar com o site oficial
 st.markdown("""
 <style>
-    /* Fundo principal */
     .main {
         background-color: #f8f9fa;
     }
-    /* Fundo da sidebar */
     .stSidebar {
         background-color: #e6f2e6;
     }
-    /* Títulos em verde escuro */
     h1, h2, h3 {
         color: #006400;
     }
-    /* Estilizar botões padrão do Streamlit */
     button[kind="primary"] {
         background-color: #228B22 !important;
         color: white !important;
         border-radius: 10px;
         border: none;
     }
-    /* Inputs (caixas de texto) arredondados */
     .stTextInput>div>div>input {
         border-radius: 10px;
     }
@@ -47,17 +42,14 @@ NOME_PLANILHA_ID = "1anS4eByA0hTI4w_spDIDPS3P205czV2f74N63UvOioM"
 NOME_ABA = "Página1"
 
 def main():
-    # Título principal
     st.title("🌿 Plataforma Colaborativa: Mapeamento da Araruta como PANC")
 
-    # Menu lateral de navegação
     aba = st.sidebar.radio("Navegue pelo sistema 🧭", [
         "🌎 Ver Mapa",
         "➕ Adicionar Novo Ponto",
         "📚 Informações"
     ])
 
-    # Tenta carregar os dados da planilha
     try:
         aba_dados = conectar_planilha(NOME_PLANILHA_ID, NOME_ABA)
         registros = aba_dados.get_all_records()
@@ -68,10 +60,8 @@ def main():
         st.exception(e)
         return
 
-    # Adiciona um pequeno espaço entre o título e o conteúdo
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Redireciona para as páginas
     if aba == "🌎 Ver Mapa":
         with st.container():
             st.header("🗺️ Mapa de Cultivos Cadastrados")
