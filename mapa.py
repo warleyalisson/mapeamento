@@ -3,13 +3,16 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 
-# Função para exibir o mapa com os pontos da planilha
+# Função para exibir o mapa com os pontos da planilha ou DataFrame
 def exibir_mapa(sheet):
     st.subheader("🗺️ Mapa de pontos cadastrados")
 
     try:
-        dados = sheet.get_all_records()
-        df = pd.DataFrame(dados)
+        # Verifica se é uma planilha (gspread) ou um DataFrame já pronto
+        if hasattr(sheet, "get_all_records"):
+            df = pd.DataFrame(sheet.get_all_records())
+        else:
+            df = sheet  # Já é um DataFrame
 
         # Verificação mínima
         if df.empty or "latitude" not in df.columns or "longitude" not in df.columns:
@@ -19,19 +22,18 @@ def exibir_mapa(sheet):
         # Conversão de tipos
         df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
         df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
-
         df = df.dropna(subset=["latitude", "longitude"])
 
         if df.empty:
             st.warning("⚠️ Nenhuma coordenada válida encontrada.")
             return
 
-        # Mapa centrado no primeiro ponto válido
+        # Mapa centrado na média dos pontos
         lat_center = df["latitude"].mean()
         lon_center = df["longitude"].mean()
         mapa = folium.Map(location=[lat_center, lon_center], zoom_start=5)
 
-        # Adiciona os pontos no mapa
+        # Adiciona marcadores
         for _, row in df.iterrows():
             popup_html = f"""
                 <b>Endereço:</b> {row.get('endereco_completo', 'Não informado')}<br>
@@ -45,9 +47,9 @@ def exibir_mapa(sheet):
                 icon=folium.Icon(color="green", icon="leaf")
             ).add_to(mapa)
 
-        # Exibir no Streamlit
+        # Exibe o mapa
         st_folium(mapa, width=800, height=600)
 
     except Exception as e:
-        st.error("❌ Erro ao carregar os dados da planilha.")
+        st.error("❌ Erro ao carregar os dados do mapa.")
         st.exception(e)
